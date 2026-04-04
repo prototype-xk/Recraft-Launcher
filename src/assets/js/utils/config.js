@@ -25,15 +25,20 @@ class Config {
 
     async getInstanceList() {
         let urlInstance = `${url}/instances`
-        let instances = await nodeFetch(urlInstance).then(res => res.json()).catch(err => err)
-        let instancesList = []
-        instances = Object.entries(instances)
-
-        for (let [name, data] of instances) {
-            let instance = data
-            instancesList.push(instance)
+        try {
+            let response = await nodeFetch(urlInstance);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            let instances = await response.json();
+            let instanceList = [];
+            for(let[name,data]of Object.entries(instances)) {
+                let instance = data;
+                instance.name = name;
+                instanceList.push(instance);
+            }
+            return instanceList;
+        } catch (error) {
+            console.error('Failed to get instance list:', error);
         }
-        return instancesList
     }
 
     async getNews(config) {

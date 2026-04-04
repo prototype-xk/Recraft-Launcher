@@ -113,9 +113,17 @@ class Home {
         let instancesListPopup = document.querySelector('.instances-List')
         let instanceCloseBTN = document.querySelector('.close-popup')
 
-        if (instancesList.length === 1) {
-            document.querySelector('.instance-select').style.display = 'none'
-            instanceBTN.style.paddingRight = '0'
+        if (instancesList.length === 0) {
+            let popupError = new popup()
+            popupError.openPopup({
+                title: 'Erreur',
+                content: 'Impossible de récupérer la liste des instances.<br>Vérifiez votre connexion internet ou réessayez plus tard.',
+                color: 'red',
+                options: [
+                    { name : "Réessayer", func: () => { location.reload() } }
+                ]
+            })
+
         }
 
         if (!instanceSelect) {
