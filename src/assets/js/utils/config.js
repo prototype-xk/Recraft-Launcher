@@ -30,7 +30,7 @@ class Config {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             let instances = await response.json();
             let instanceList = [];
-            for(let[name,data]of Object.entries(instances)) {
+            for (let [name, data] of Object.entries(instances)) {
                 let instance = data;
                 instance.name = name;
                 instanceList.push(instance);
@@ -38,6 +38,7 @@ class Config {
             return instanceList;
         } catch (error) {
             console.error('Failed to get instance list:', error);
+            return [];
         }
     }
 

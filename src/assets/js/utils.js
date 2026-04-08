@@ -29,12 +29,12 @@ async function setBackground(theme) {
         let backgrounds = fs.readdirSync(`${__dirname}/assets/images/background/easterEgg`);
         let Background = backgrounds[Math.floor(Math.random() * backgrounds.length)];
         background = `url(./assets/images/background/easterEgg/${Background})`;
-    } else if (fs.existsSync(`${__dirname}/assets/images/background/${theme ? 'dark' : 'light'}`)) {
-        let backgrounds = fs.readdirSync(`${__dirname}/assets/images/background/${theme ? 'dark' : 'light'}`);
+    } else if (fs.existsSync(`${__dirname}/assets/images/background/dark`)) {
+        let backgrounds = fs.readdirSync(`${__dirname}/assets/images/background/dark`);
         let Background = backgrounds[Math.floor(Math.random() * backgrounds.length)];
-        background = `linear-gradient(#00000080, #00000080), url(./assets/images/background/${theme ? 'dark' : 'light'}/${Background})`;
+        background = `linear-gradient(#00000080, #00000080), url(./assets/images/background/dark/${Background})`;
     }
-    body.style.backgroundImage = background ? background : theme ? '#000' : '#fff';
+    body.style.backgroundImage = background ? background : '#1e1b24';
     body.style.backgroundSize = 'cover';
 }
 

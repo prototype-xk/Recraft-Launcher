@@ -2,10 +2,13 @@
  * @author Luuxis
  * Luuxis License v1.0 (voir fichier LICENSE pour les détails en FR/EN)
  */
+
 import { config, database, logger, changePanel, appdata, setStatus, pkg, popup } from '../utils.js'
 
 const { Launch } = require('minecraft-java-core')
 const { shell, ipcRenderer } = require('electron')
+const fs = require('fs');
+const path = require('path');
 
 class Home {
     static id = "home";
@@ -16,6 +19,7 @@ class Home {
         this.socialLick()
         this.instancesSelect()
         document.querySelector('.settings-btn').addEventListener('click', e => changePanel('settings'))
+        document.querySelector('.repair-btn').addEventListener('click', e => this.deleteModpack())
     }
 
     async news() {
@@ -120,10 +124,10 @@ class Home {
                 content: 'Impossible de récupérer la liste des instances.<br>Vérifiez votre connexion internet ou réessayez plus tard.',
                 color: 'red',
                 options: [
-                    { name : "Réessayer", func: () => { location.reload() } }
+                    { name: "Réessayer", func: () => { location.reload() } }
                 ]
             })
-
+            return;
         }
 
         if (!instanceSelect) {
@@ -208,143 +212,215 @@ class Home {
     }
 
     async startGame() {
-        let launch = new Launch()
-        let configClient = await this.db.readData('configClient')
-        let instance = await config.getInstanceList()
-        let authenticator = await this.db.readData('accounts', configClient.account_selected)
-        let options = instance.find(i => i.name == configClient.instance_select)
+        try {
+            let launch = new Launch()
+            let configClient = await this.db.readData('configClient')
+            let instance = await config.getInstanceList()
+            let authenticator = await this.db.readData('accounts', configClient.account_selected)
+            let options = instance.find(i => i.name == configClient.instance_select)
 
-        let playInstanceBTN = document.querySelector('.play-instance')
-        let infoStartingBOX = document.querySelector('.info-starting-game')
-        let infoStarting = document.querySelector(".info-starting-game-text")
-        let progressBar = document.querySelector('.progress-bar')
-
-        let opt = {
-            url: options.url,
-            authenticator: authenticator,
-            timeout: 10000,
-            path: `${await appdata()}/${process.platform == 'darwin' ? this.config.dataDirectory : `.${this.config.dataDirectory}`}`,
-            instance: options.name,
-            version: options.loader.minecraft_version,
-            detached: configClient.launcher_config.closeLauncher == "close-all" ? false : true,
-            downloadFileMultiple: configClient.launcher_config.download_multi,
-            intelEnabledMac: configClient.launcher_config.intelEnabledMac,
-
-            loader: {
-                type: options.loader.loader_type,
-                build: options.loader.loader_version,
-                enable: options.loader.loader_type == 'none' ? false : true
-            },
-
-            verify: options.verify,
-
-            ignored: [...options.ignored],
-
-            java: {
-                path: configClient.java_config.java_path,
-            },
-
-            JVM_ARGS:  options.jvm_args ? options.jvm_args : [],
-            GAME_ARGS: options.game_args ? options.game_args : [],
-
-            screen: {
-                width: configClient.game_config.screen_size.width,
-                height: configClient.game_config.screen_size.height
-            },
-
-            memory: {
-                min: `${configClient.java_config.java_memory.min * 1024}M`,
-                max: `${configClient.java_config.java_memory.max * 1024}M`
+            if (!options) {
+                let popupError = new popup();
+                popupError.openPopup({
+                    title: 'Erreur',
+                    content: 'Impossible de récupérer les informations du serveur.<br>Vérifiez votre connexion internet.',
+                    color: 'red',
+                    options: [{ name: 'Réessayer', func: () => { location.reload() } }]
+                });
+                return;
             }
-        }
 
-        launch.Launch(opt);
+            let playInstanceBTN = document.querySelector('.play-instance')
+            let infoStartingBOX = document.querySelector('.info-starting-game')
+            let infoStarting = document.querySelector(".info-starting-game-text")
+            let progressBar = document.querySelector('.progress-bar')
 
-        playInstanceBTN.style.display = "none"
-        infoStartingBOX.style.display = "block"
-        progressBar.style.display = "";
-        ipcRenderer.send('main-window-progress-load')
+            let rootPath = `${await appdata()}/${process.platform == 'darwin' ? this.config.dataDirectory : `.${this.config.dataDirectory}`}`;
 
-        launch.on('extract', extract => {
+            // Gère si Java chemin valide ou laisse le module s'en occuper
+            let validJavaPath = configClient.java_config?.java_path || null;
+
+            let opt = {
+                url: options.url,
+                authenticator: authenticator,
+                timeout: 10000,
+                path: rootPath,
+                instance: options.name,
+                version: options.loader.minecraft_version,
+                detached: configClient.launcher_config.closeLauncher == "close-all" ? false : true,
+                downloadFileMultiple: configClient.launcher_config.download_multi,
+                intelEnabledMac: configClient.launcher_config.intelEnabledMac,
+
+                loader: {
+                    type: options.loader.loader_type,
+                    build: options.loader.loader_version,
+                    enable: options.loader.loader_type == 'none' ? false : true
+                },
+
+                verify: options.verify ?? this.config.verify ?? false,
+                ignored: [...(options.ignored || this.config.ignored || [])].filter(file => {
+                    let filePath = path.join(rootPath, 'instances', options.name, file);
+                    return fs.existsSync(filePath);
+                }),
+
+                java: {
+                    path: validJavaPath,
+                },
+
+                // LES OPTIMISATIONS JAVA D'ARCADIA
+                JVM_ARGS: [
+                    "-XX:+ParallelRefProcEnabled",
+                    "-XX:MaxGCPauseMillis=200",
+                    "-XX:+UnlockExperimentalVMOptions",
+                    "-XX:+DisableExplicitGC",
+                    "-XX:+AlwaysPreTouch",
+                    "-XX:G1NewSizePercent=30",
+                    "-XX:G1MaxNewSizePercent=40",
+                    "-XX:G1HeapRegionSize=8M",
+                    "-XX:G1ReservePercent=20",
+                    "-XX:G1HeapWastePercent=5",
+                    "-XX:G1MixedGCCountTarget=4",
+                    "-XX:InitiatingHeapOccupancyPercent=15",
+                    "-XX:G1MixedGCLiveThresholdPercent=90",
+                    "-XX:G1RSetUpdatingPauseTimePercent=5",
+                    "-XX:SurvivorRatio=32",
+                    "-XX:+PerfDisableSharedMem",
+                    "-XX:MaxTenuringThreshold=1",
+                    "-Dusing.aikars.flags=https://mcflags.emc.gs",
+                    "-Daikars.new.flags=true",
+                    "-Dmodernfix.allowSparkProfiling=true",
+                    ...(options.jvm_args || [])
+                ],
+                GAME_ARGS: options.game_args ? options.game_args : [],
+
+                screen: {
+                    width: configClient.game_config.screen_size.width,
+                    height: configClient.game_config.screen_size.height
+                },
+
+                memory: {
+                    min: `${configClient.java_config.java_memory.min * 1024}M`,
+                    max: `${configClient.java_config.java_memory.max * 1024}M`
+                }
+            }
+
+            let launchWatchdog = setTimeout(() => {
+                console.error('[Watchdog] Lancement du jeu trop long, annulation forcée.');
+                let popupError = new popup();
+                popupError.openPopup({
+                    title: 'Délai dépassé',
+                    content: 'Le lancement a pris trop longtemps et a été annulé.<br>Vérifiez votre connexion ou essayez de réparer le jeu (bouton 🔧).',
+                    color: 'red',
+                    options: [{ name: 'OK', func: () => { } }]
+                });
+                document.querySelector('.play-instance').style.display = "flex";
+                document.querySelector('.info-starting-game').style.display = "none";
+            }, 5 * 60 * 1000); // 5 minutes
+
+            launch.Launch(opt);
+
+            playInstanceBTN.style.display = "none"
+            infoStartingBOX.style.display = "block"
+            progressBar.style.display = "";
             ipcRenderer.send('main-window-progress-load')
-            console.log(extract);
-        });
 
-        launch.on('progress', (progress, size) => {
-            infoStarting.innerHTML = `Téléchargement ${((progress / size) * 100).toFixed(0)}%`
-            ipcRenderer.send('main-window-progress', { progress, size })
-            progressBar.value = progress;
-            progressBar.max = size;
-        });
+            launch.on('extract', extract => {
+                ipcRenderer.send('main-window-progress-load')
+                console.log(extract);
+            });
 
-        launch.on('check', (progress, size) => {
-            infoStarting.innerHTML = `Vérification ${((progress / size) * 100).toFixed(0)}%`
-            ipcRenderer.send('main-window-progress', { progress, size })
-            progressBar.value = progress;
-            progressBar.max = size;
-        });
+            launch.on('progress', (progress, size) => {
+                infoStarting.innerHTML = `Téléchargement ${((progress / size) * 100).toFixed(0)}%`
+                ipcRenderer.send('main-window-progress', { progress, size })
+                progressBar.value = progress;
+                progressBar.max = size;
+            });
 
-        launch.on('estimated', (time) => {
-            let hours = Math.floor(time / 3600);
-            let minutes = Math.floor((time - hours * 3600) / 60);
-            let seconds = Math.floor(time - hours * 3600 - minutes * 60);
-            console.log(`${hours}h ${minutes}m ${seconds}s`);
-        })
+            launch.on('check', (progress, size) => {
+                infoStarting.innerHTML = `Vérification ${((progress / size) * 100).toFixed(0)}%`
+                ipcRenderer.send('main-window-progress', { progress, size })
+                progressBar.value = progress;
+                progressBar.max = size;
+            });
 
-        launch.on('speed', (speed) => {
-            console.log(`${(speed / 1067008).toFixed(2)} Mb/s`)
-        })
-
-        launch.on('patch', patch => {
-            console.log(patch);
-            ipcRenderer.send('main-window-progress-load')
-            infoStarting.innerHTML = `Patch en cours...`
-        });
-
-        launch.on('data', (e) => {
-            progressBar.style.display = "none"
-            if (configClient.launcher_config.closeLauncher == 'close-launcher') {
-                ipcRenderer.send("main-window-hide")
-            };
-            new logger('Minecraft', '#36b030');
-            ipcRenderer.send('main-window-progress-load')
-            infoStarting.innerHTML = `Demarrage en cours...`
-            console.log(e);
-        })
-
-        launch.on('close', code => {
-            if (configClient.launcher_config.closeLauncher == 'close-launcher') {
-                ipcRenderer.send("main-window-show")
-            };
-            ipcRenderer.send('main-window-progress-reset')
-            infoStartingBOX.style.display = "none"
-            playInstanceBTN.style.display = "flex"
-            infoStarting.innerHTML = `Vérification`
-            new logger(pkg.name, '#7289da');
-            console.log('Close');
-        });
-
-        launch.on('error', err => {
-            let popupError = new popup()
-
-            popupError.openPopup({
-                title: 'Erreur',
-                content: err.error,
-                color: 'red',
-                options: true
+            launch.on('estimated', (time) => {
+                let hours = Math.floor(time / 3600);
+                let minutes = Math.floor((time - hours * 3600) / 60);
+                let seconds = Math.floor(time - hours * 3600 - minutes * 60);
+                console.log(`${hours}h ${minutes}m ${seconds}s`);
             })
 
-            if (configClient.launcher_config.closeLauncher == 'close-launcher') {
-                ipcRenderer.send("main-window-show")
-            };
-            ipcRenderer.send('main-window-progress-reset')
-            infoStartingBOX.style.display = "none"
-            playInstanceBTN.style.display = "flex"
-            infoStarting.innerHTML = `Vérification`
-            new logger(pkg.name, '#7289da');
-            console.log(err);
-        });
+            launch.on('speed', (speed) => {
+                console.log(`${(speed / 1067008).toFixed(2)} Mb/s`)
+            })
+
+            launch.on('patch', patch => {
+                console.log(patch);
+                ipcRenderer.send('main-window-progress-load')
+                infoStarting.innerHTML = `Patch en cours...`
+            });
+
+            launch.on('data', (e) => {
+                clearTimeout(launchWatchdog);
+                progressBar.style.display = "none"
+                if (configClient.launcher_config.closeLauncher == 'close-launcher') {
+                    ipcRenderer.send("main-window-hide")
+                };
+                new logger('Minecraft', '#36b030');
+                ipcRenderer.send('main-window-progress-load')
+                infoStarting.innerHTML = `Demarrage en cours...`
+                console.log(e);
+            })
+
+            launch.on('close', code => {
+                clearTimeout(launchWatchdog);
+                if (configClient.launcher_config.closeLauncher == 'close-launcher') {
+                    ipcRenderer.send("main-window-show")
+                };
+                ipcRenderer.send('main-window-progress-reset')
+                infoStartingBOX.style.display = "none"
+                playInstanceBTN.style.display = "flex"
+                infoStarting.innerHTML = `Vérification`
+                new logger(pkg.name, '#7289da');
+                console.log('Close : ' + code);
+            });
+
+            launch.on('error', err => {
+                clearTimeout(launchWatchdog);
+                let popupError = new popup()
+                popupError.openPopup({
+                    title: 'Erreur',
+                    content: err.message || err.error || String(err),
+                    color: 'red',
+                    options: true
+                })
+
+                if (configClient.launcher_config.closeLauncher == 'close-launcher') {
+                    ipcRenderer.send("main-window-show")
+                };
+                ipcRenderer.send('main-window-progress-reset')
+                infoStartingBOX.style.display = "none"
+                playInstanceBTN.style.display = "flex"
+                infoStarting.innerHTML = `Vérification`
+                new logger(pkg.name, '#7289da');
+                console.error(err);
+            });
+
+            // LE CATCH PROTECTEUR
+        } catch (error) {
+            console.error(error);
+            let popupError = new popup();
+            popupError.openPopup({
+                title: 'Erreur au Lancement',
+                content: `Détails : ${error.message}`,
+                color: 'red',
+                options: true
+            });
+            document.querySelector('.play-instance').style.display = "flex";
+            document.querySelector('.info-starting-game').style.display = "none";
+        }
     }
+
 
     getdate(e) {
         let date = new Date(e)
@@ -354,5 +430,43 @@ class Home {
         let allMonth = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
         return { year: year, month: allMonth[month - 1], day: day }
     }
+
+    async deleteModpack() {
+        let appDataDir = await appdata();
+        let baseDir = path.join(appDataDir, process.platform == 'darwin' ? this.config.dataDirectory : `.${this.config.dataDirectory}`);
+        let instancesDir = path.join(baseDir, 'instances');
+        if (fs.existsSync(instancesDir)) {
+            try {
+                fs.rmSync(instancesDir, { recursive: true, force: true });
+                fs.mkdirSync(instancesDir);
+                let popupSuccess = new popup();
+                popupSuccess.openPopup({
+                    title: 'Succès',
+                    content: 'Le jeu a été réinitialisé avec succès.',
+                    color: 'green',
+                    options: [
+                        { name: 'OK', func: () => { location.reload(); } }
+                    ]
+                });
+            } catch (e) {
+                console.error('Failed to delete instances:', e);
+                let popupError = new popup();
+                popupError.openPopup({
+                    title: 'Erreur',
+                    content: 'Une erreur est survenue lors de suppression.',
+                    color: 'red'
+                });
+            }
+        } else {
+            let popupInfo = new popup();
+            popupInfo.openPopup({
+                title: 'Info',
+                content: 'Aucun dossier de jeu à réinitialiser.',
+                color: 'var(--element-color)',
+                options: true
+            });
+        }
+    }
+
 }
 export default Home;

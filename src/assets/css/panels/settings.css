@@ -32,18 +32,60 @@
 }
 
 .nav-settings-btn {
-    font-size: 50%;
-    border: solid 4px var(--element-color);
-    padding: 5px 10px;
-    border-radius: 10px;
-    width: 70%;
-    text-align: center;
-    margin: 0.5rem 0;
+    padding: 15px 15px;
+    background: transparent;
+    border: 2px solid #8A2BE2;
+    box-sizing: border-box;
+    width: 60%;
+    font-size: 15px;
+    font-weight: bold;
+    color: #ffffff;
+    border-radius: 6px;
     cursor: pointer;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    transition: all 0.5s;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    text-align: center;
+    z-index: 1;
 }
 
-.active-settings-BTN {
-    background: var(--element-color);
+.nav-settings-btn::after,
+.nav-settings-btn::before {
+    content: "";
+    position: absolute;
+    width: 0;
+    height: 100%;
+    background: #8A2BE2;
+    top: 0;
+    transform: skewX(35deg);
+    transition: all 0.5s;
+    z-index: -1;
+}
+
+
+.nav-settings-btn::after {
+    left: -20px;
+}
+
+.nav-settings-btn::before {
+    right: -20px;
+}
+
+.nav-settings-btn:hover::after,
+.active-settings-BTN::after {
+    width: 50%;
+    left: 0;
+}
+
+.nav-settings-btn:hover::before,
+.active-settings-BTN::before {
+    width: 50%;
+    right: 0;
 }
 
 .container-settings {

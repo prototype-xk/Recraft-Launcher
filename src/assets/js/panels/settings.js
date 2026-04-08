@@ -152,13 +152,24 @@ class Settings {
         minSpan.setAttribute("value", `${ram.ramMin} Go`);
         maxSpan.setAttribute("value", `${ram.ramMax} Go`);
 
-        slider.on("change", async (min, max) => {
-            let config = await this.db.readData('configClient');
+        let saveTimeout = null;
+        slider.on("change", (min, max) => {
+            if (parseFloat(min) >= parseFloat(max)) {
+                min = Math.max(1, parseFloat(max) - 1);
+            }
+            if (parseFloat(max) > Math.trunc((80 * totalMem) / 100)) {
+                max = Math.trunc((80 * totalMem) / 100);
+            }
             minSpan.setAttribute("value", `${min} Go`);
             maxSpan.setAttribute("value", `${max} Go`);
-            config.java_config.java_memory = { min: min, max: max };
-            this.db.updateData('configClient', config);
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(async () => {
+                let config = await this.db.readData('configClient');
+                config.java_config.java_memory = { min: min, max: max };
+                this.db.updateData('configClient', config);
+            }, 300);
         });
+
     }
 
     async javaPath() {
@@ -175,10 +186,22 @@ class Settings {
             javaPathInputFile.value = '';
             javaPathInputFile.click();
             await new Promise((resolve) => {
-                let interval;
-                interval = setInterval(() => {
-                    if (javaPathInputFile.value != '') resolve(clearInterval(interval));
-                }, 100);
+                const onChange = () => {
+                    javaPathInputFile.removeEventListener('change', onChange);
+                    window.removeEventListener('focus', onFocus);
+                    resolve();
+                };
+                const onFocus = () => {
+                    setTimeout(() => {
+                        if (javaPathInputFile.value == '') {
+                            javaPathInputFile.removeEventListener('change', onChange);
+                            window.removeEventListener('focus', onFocus);
+                            resolve();
+                        }
+                    }, 300);
+                };
+                javaPathInputFile.addEventListener('change', onChange);
+                window.addEventListener('focus', onFocus);
             });
 
             if (javaPathInputFile.value.replace(".exe", '').endsWith("java") || javaPathInputFile.value.replace(".exe", '').endsWith("javaw")) {
@@ -249,43 +272,6 @@ class Settings {
             maxDownloadFilesInput.value = 5
             configClient.launcher_config.download_multi = 5;
             await this.db.updateData('configClient', configClient);
-        })
-
-        let themeBox = document.querySelector(".theme-box");
-        let theme = configClient?.launcher_config?.theme || "auto";
-
-        if (theme == "auto") {
-            document.querySelector('.theme-btn-auto').classList.add('active-theme');
-        } else if (theme == "dark") {
-            document.querySelector('.theme-btn-sombre').classList.add('active-theme');
-        } else if (theme == "light") {
-            document.querySelector('.theme-btn-clair').classList.add('active-theme');
-        }
-
-        themeBox.addEventListener("click", async e => {
-            if (e.target.classList.contains('theme-btn')) {
-                let activeTheme = document.querySelector('.active-theme');
-                if (e.target.classList.contains('active-theme')) return
-                activeTheme?.classList.remove('active-theme');
-
-                if (e.target.classList.contains('theme-btn-auto')) {
-                    setBackground();
-                    theme = "auto";
-                    e.target.classList.add('active-theme');
-                } else if (e.target.classList.contains('theme-btn-sombre')) {
-                    setBackground(true);
-                    theme = "dark";
-                    e.target.classList.add('active-theme');
-                } else if (e.target.classList.contains('theme-btn-clair')) {
-                    setBackground(false);
-                    theme = "light";
-                    e.target.classList.add('active-theme');
-                }
-
-                let configClient = await this.db.readData('configClient')
-                configClient.launcher_config.theme = theme;
-                await this.db.updateData('configClient', configClient);
-            }
         })
 
         let closeBox = document.querySelector(".close-box");

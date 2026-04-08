@@ -249,26 +249,32 @@
     align-items: center;
 }
 
-.play-instance {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: relative;
-    border: solid 3px var(--element-color);
-    border-radius: 15px;
-    height: 3.2rem;
-    padding-right: 1.9rem;
+.btn-space {
+    padding: 15px 45px;
+    text-align: center;
+    text-transform: uppercase;
+    -webkit-transition: 0.5s;
+    transition: 0.5s;
+    background-size: 500% auto;
+    font-weight: bold;
+    font-size: 1.5rem;
+    color: rgba(255, 255, 255, 0.7);
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
 }
 
-.play-btn {
-    border: none;
-    border-radius: 10px;
-    background: none;
-    color: var(--color);
-    font-size: 2rem;
-    font-weight: bolder;
-    padding: 0 1.5rem;
-    pointer-events: none;
+.btn-space:hover {
+    background-position: right center;
+    -webkit-box-shadow: 0 0 20px #743ad5;
+    box-shadow: 0 0 20px #743ad5;
+    color: rgb(255, 255, 255);
+    text-shadow: 1px 1px 10px #d53a9d;
+}
+
+.space {
+    background-image: -webkit-gradient(linear, left top, right top, from(#743ad5), color-stop(51%, #d53a9d), to(#743ad5));
+    background-image: linear-gradient(to right, #743ad5 0%, #d53a9d 51%, #743ad5 100%);
 }
 
 .instance-select {
@@ -320,6 +326,12 @@
     font-size: 3rem;
     color: var(--element-color);
     margin: 0 1.5rem;
+    transition: transform 0.5s ease;
+    cursor: pointer;
+}
+
+.settings-btn:hover {
+    transform: rotate(90deg);
 }
 
 .instance-popup {
@@ -375,4 +387,36 @@
 
 .active-instance {
     background: var(--element-color);
+}
+
+.sidebar-right-buttons {
+    display: flex;
+    align-items: center;
+    margin: 0 1.5rem;
+}
+
+.settings-btn {
+    width: 3rem;
+    height: 3rem;
+    font-size: 3rem;
+    color: var(--element-color);
+    transition: transform 0.5s ease;
+    cursor: pointer;
+}
+
+.repair-btn {
+    width: 3rem;
+    height: 3rem;
+    font-size: 2rem;
+    color: #ff3333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.5s ease;
+    cursor: pointer;
+    margin-right: 1.5rem;
+}
+
+.repair-btn:hover {
+    transform: rotate(180deg);
 }

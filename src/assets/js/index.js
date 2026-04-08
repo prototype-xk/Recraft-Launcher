@@ -30,9 +30,20 @@ class Splash {
 
     async startAnimation() {
         let splashes = [
-            { "message": "Je... vie...", "author": "Luuxis" },
-            { "message": "Salut je suis du code.", "author": "Luuxis" },
-            { "message": "Linux n'est pas un os, mais un kernel.", "author": "Luuxis" }
+            { "message": "C'est pas un bug, c'est une feature. Si tu meurs, c'est voulu.", "author": "Prototype_Xk" },
+            { "message": "N'appuyez pas sur le gros bouton rouge, j'ai oublié ce qu'il déclenche.", "author": "Dev_Panique" },
+            { "message": "Le code tient grâce à une seule ligne que je n'ose pas supprimer.", "author": "Prototype_Xk" },
+            { "message": "J'ai réparé le launcher. Enfin, j'ai surtout déplacé le problème.", "author": "L_Architecte" },
+            { "message": "Si ça marche, on ne pose pas de questions. C'est la règle d'or.", "author": "Prototype_Xk" },
+            { "message": "Le serveur est stable. Pour l'instant. Ne le regardez pas trop fort.", "author": "Admin_Fragile" },
+            { "message": "J'ai ajouté du code pour corriger le code qui corrigeait le code.", "author": "Prototype_Xk" },
+            { "message": "C'est pas un crash, c'est une fin alternative non documentée.", "author": "Dev_Malin" },
+            { "message": "N'appuyez pas sur le gros bouton rouge, j'ai peur que ça formate mon frigo.", "author": "Prototype_Xk" },
+            { "message": "Le launcher est en train de négocier avec votre Windows. Soyez patients.", "author": "Prototype_Xk" },
+            { "message": "J'ai trouvé d'où venait l'erreur, mais la solution fait encore plus peur.", "author": "Le_Sorcier" },
+            { "message": "Le Serveur Ne Meurt Jamais.", "author": "Technoblade" },
+            { "message": "Si le launcher refuse de se lancer, essayez de lui parler gentiment.", "author": "Prototype_Xk" },
+            { "message": "En cas de bug, merci de sacrifier un stack de diamants au Dieu du Code.", "author": "Prototype_Xk" }
         ];
         let splash = splashes[Math.floor(Math.random() * splashes.length)];
         this.splashMessage.textContent = splash.message;
@@ -134,7 +145,10 @@ class Splash {
         let i = 4;
         setInterval(() => {
             this.setStatus(`${text}<br>Arrêt dans ${i--}s`);
-            if (i < 0) ipcRenderer.send('update-window-close');
+            if (i < 0) {
+                clearInterval(countdown);
+                ipcRenderer.send('update-window-close');
+            }
         }, 1000);
     }
 
