@@ -243,7 +243,7 @@ class Home {
             let opt = {
                 url: options.url,
                 authenticator: authenticator,
-                timeout: 10000,
+                timeout: 30000,
                 path: rootPath,
                 instance: options.name,
                 version: options.loader.minecraft_version,
@@ -306,6 +306,8 @@ class Home {
 
             let launchWatchdog = setTimeout(() => {
                 console.error('[Watchdog] Lancement du jeu trop long, annulation forcée.');
+                // Tuer le processus de launch s'il est encore en cours
+                try { if (launch.proc) launch.proc.kill(); } catch (_) { }
                 let popupError = new popup();
                 popupError.openPopup({
                     title: 'Délai dépassé',
@@ -315,7 +317,7 @@ class Home {
                 });
                 document.querySelector('.play-instance').style.display = "flex";
                 document.querySelector('.info-starting-game').style.display = "none";
-            }, 5 * 60 * 1000); // 5 minutes
+            }, 45 * 60 * 1000); // 45 minutes
 
             launch.Launch(opt);
 
